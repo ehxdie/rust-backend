@@ -51,6 +51,13 @@ async fn main() -> Result<String> {
             .and(warp::get())
             .and(with_db(db.clone()))
             .and_then(handler::get_workout));
+        .or(
+            workout
+            .and(warp::get())
+            .and(warp::path::param())
+            .and(with_db(db.clone()))
+            .and_then(handler::get_one_workout));
+        
 
    
     let routes = workout_routes.recover(error::handle_rejection);
