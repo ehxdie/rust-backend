@@ -20,16 +20,17 @@ type WebResult<T> = std::result::Result<T, Rejection>;
 // For changing data formats, and the debug trait 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct workout{
+    pub id: String,
     pub title: String,
     pub load: String,
     pub reps: String,
-    pub added_at: DateTime<Utc>
+    // pub added_at: DateTime<Utc>
 }
 
 #[tokio::main]
-async fn main() -> Result<String> {
+async fn main() -> Result<()> {
     let db = DB::init().await?;
-    let workout = warp::path("api/workouts");
+    let workout = warp::path("workouts");
 
     let workout_routes = workout
         .and(warp::post())
@@ -50,7 +51,7 @@ async fn main() -> Result<String> {
         .or(workout
             .and(warp::get())
             .and(with_db(db.clone()))
-            .and_then(handler::get_workout));
+            .and_then(handler::get_workout))
         .or(
             workout
             .and(warp::get())
@@ -64,7 +65,7 @@ async fn main() -> Result<String> {
 
     println!("Started on port 8080");
     warp::serve(routes).run(([0,0,0,0], 8080)).await;
-    Ok(());
+    Ok(())
 }
 
 // No idea what this does tbh
