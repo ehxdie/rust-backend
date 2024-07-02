@@ -22,9 +22,15 @@ pub async fn get_one_workout(id: String, db: DB) -> WebResult<impl Reply> {
     Ok(json(&workout))
 }
 
-pub async fn create_workout(body: workoutRequest, db: DB) -> WebResult<impl Reply> {
-    db.create_workout(&body).await.map_err(|e| reject::custom(e))?;
-    Ok(StatusCode::CREATED)
+// pub async fn create_workout(body: workoutRequest, db: DB) -> WebResult<impl Reply> {
+//     db.create_workout(&body).await.map_err(|e| reject::custom(e))?;
+//     Ok(StatusCode::CREATED)
+// }
+pub async fn create_workout(workout: workoutRequest, db: DB) -> WebResult<impl Reply> {
+    match db.create_workout(&workout).await {
+        Ok(created_workout) => Ok(warp::reply::json(&created_workout)),
+        Err(e) => Err(warp::reject::custom(e)),
+    }
 }
 
 pub async fn update_workout(id: String, body: workoutRequest, db: DB) -> WebResult<impl Reply> {
@@ -35,6 +41,6 @@ pub async fn update_workout(id: String, body: workoutRequest, db: DB) -> WebResu
 }
 
 pub async fn delete_workout(id: String, db: DB) -> WebResult<impl Reply> {
-    db.delete_workout(&id).await.map_err(|e| reject::custom(e))?;
-    Ok(StatusCode::OK)
+    let workout = db.delete_workout(&id).await.map_err(|e| reject::custom(e))?;
+    Ok(json(&workout))
 }

@@ -46,37 +46,84 @@ impl DB {
 
    pub async fn fetch_one_workout(&self, id: &str) -> Result<Option<workout>> {
         let oid = ObjectId::parse_str(id).map_err(|_| InvalidIDError(id.to_owned()))?;
-        let filter = doc! {
-            "_id": oid,
-        };
+    let filter = doc! {
+        "_id": oid,
+    };
 
-        let doc = self
-            .get_collection()
-            .find_one(filter, None)
-            .await
-            .map_err(MongoQueryError)?;
+    let result = self
+        .get_collection()
+        .find_one(filter, None)
+        .await
+        .map_err(MongoQueryError)?;
 
-        if let Some(doc) = doc {
-            Ok(Some(self.doc_to_book(&doc)?))
-        } else {
-            Ok(None)
-        }
-    }
+    
+    Ok(result.map(|doc| self.doc_to_book(&doc).unwrap()))
+    } 
+    
 
-    pub async fn create_workout(&self, entry: &workoutRequest) -> Result<()> {
-        let doc = doc! {
-            TITLE: entry.title.clone(),
-            LOAD: entry.load.clone(),
-            REPS: entry.reps.clone(),
-            // ADDED_AT: Utc::now(),
-            };
+// pub async fn create_workout(&self, entry: &workoutRequest) -> Result<workout> {
+//     let doc = doc! {
+//         TITLE: entry.title.clone(),
+//         LOAD: entry.load.clone(),
+//         REPS: entry.reps.clone(),
+//     };
 
-        self.get_collection()
-            .insert_one(doc, None)
-            .await
-            .map_err(MongoQueryError)?;
-        Ok(())
-    }
+//     let insert_result = self.get_collection()
+//         .insert_one(doc, None)
+//         .await
+//         .map_err(MongoQueryError)?;
+
+//     let inserted_id = insert_result.inserted_id.as_object_id();
+
+
+//     Ok(workout {
+//     id: inserted_id,
+//     title: entry.title.clone(),
+//     load: entry.load.clone(),
+//     reps: entry.reps.clone(),
+//     })
+   
+// }
+    // pub async fn create_workout(&self, entry: &workoutRequest) -> Result<()> {
+    //     let doc = doc! {
+    //         TITLE: entry.title.clone(),
+    //         LOAD: entry.load.clone(),
+    //         REPS: entry.reps.clone(),
+    //         // ADDED_AT: Utc::now(),
+    //         };
+
+    //       self.get_collection()
+    //         .insert_one(doc, None)
+    //         .await
+    //         .map_err(MongoQueryError)?;
+    //     Ok(())
+    // }
+    pub async fn create_workout(&self, entry: &workoutRequest) -> Result<workout> {
+    let doc = doc! {
+        TITLE: entry.title.clone(),
+        LOAD: entry.load.clone(),
+        REPS: entry.reps.clone(),
+        // ADDED_AT: Utc::now(),
+    };
+
+    let insert_result = self.get_collection()
+        .insert_one(doc, None)
+        .await
+        .map_err(MongoQueryError)?;
+
+    let inserted_id = insert_result.inserted_id.as_object_id().expect("Server error: Inserted ID is not an ObjectId");
+
+    // Construct the workout struct
+    let created_workout = workout {
+        id: inserted_id.to_hex(),
+        title: entry.title.clone(),
+        load: entry.load.clone(),
+        reps: entry.reps.clone(),
+        // added_at: Utc::now(), // Uncomment if you decide to use this field
+    };
+
+    Ok(created_workout)
+}
 
     pub async fn update_workout(&self, id: &str, entry: &workoutRequest) -> Result<()> {
         let oid = ObjectId::parse_str(id).map_err(|_| InvalidIDError(id.to_owned()))?;
@@ -97,18 +144,31 @@ impl DB {
         Ok(())
     }
 
-    pub async fn delete_workout(&self, id: &str) -> Result<()> {
-        let oid = ObjectId::parse_str(id).map_err(|_| InvalidIDError(id.to_owned()))?;
-        let filter = doc! {
-            "_id": oid,
-        };
+    // pub async fn delete_workout(&self, id: &str) -> Result<()> {
+    //     let oid = ObjectId::parse_str(id).map_err(|_| InvalidIDError(id.to_owned()))?;
+    //     let filter = doc! {
+    //         "_id": oid,
+    //     };
 
-        self.get_collection()
-            .delete_one(filter, None)
-            .await
-            .map_err(MongoQueryError)?;
-        Ok(())
-    }
+    //     self.get_collection()
+    //         .delete_one(filter, None)
+    //         .await
+    //         .map_err(MongoQueryError)?;
+    //     Ok(())
+    // }
+    pub async fn delete_workout(&self, id: &str) -> Result<Option<workout>> {
+    let oid = ObjectId::parse_str(id).map_err(|_| InvalidIDError(id.to_owned()))?;
+    let filter = doc! {
+        "_id": oid,
+    };
+
+    let result = self.get_collection()
+        .find_one_and_delete(filter, None)
+        .await
+        .map_err(MongoQueryError)?;
+
+    Ok(result.map(|doc| self.doc_to_book(&doc).unwrap()))
+}
 
     fn get_collection(&self) -> Collection<Document> {
         self.client.database(DB_NAME).collection(COLL)

@@ -2,6 +2,9 @@ use chrono::prelude::*;
 use serde::{Serialize, Deserialize};
 use db::DB;
 use std::convert::Infallible;
+// Fors CORS
+use warp::http::Method;
+use warp::cors::Cors;
 
 // The webframework used to create the server and routing
 use warp::{Filter, Rejection};
@@ -32,6 +35,12 @@ async fn main() -> Result<()> {
     let db = DB::init().await?;
     let workout = warp::path("workouts");
 
+    // Define CORS configuration
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(&[Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers(vec!["Content-Type"]);
+
     let workout_routes = workout
         .and(warp::post())
         .and(warp::body::json())
@@ -58,10 +67,11 @@ async fn main() -> Result<()> {
             .and(warp::path::param())
             .and(with_db(db.clone()))
             .and_then(handler::get_one_workout));
+            
         
 
    
-    let routes = workout_routes.recover(error::handle_rejection);
+    let routes = workout_routes.recover(error::handle_rejection).with(cors);
 
     println!("Started on port 8080");
     warp::serve(routes).run(([0,0,0,0], 8080)).await;
